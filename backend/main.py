@@ -6,13 +6,13 @@ from typing import Optional
 
 load_dotenv()
 
-OPENAI_KEY = os.getenv("OPENAI_API_KEY")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 FLASK_SECRET_KEY = os.getenv("FLASK_SECRET_KEY")
 
-if not OPENAI_KEY or not FLASK_SECRET_KEY:
-    raise RuntimeError("Missing OPENAI_API_KEY or FLASK_SECRET_KEY in environment")
+if not GEMINI_API_KEY or not FLASK_SECRET_KEY:
+    raise RuntimeError("Missing GEMINI_API_KEY or FLASK_SECRET_KEY in environment")
 
-app = FastAPI(title="Gmail Add-on Summarizer")
+app = FastAPI(title="Gmail Add-on Summarizer (Gemini version)")
 
 class SummarizeRequest(BaseModel):
     subject: Optional[str] = None
@@ -21,6 +21,7 @@ class SummarizeRequest(BaseModel):
     length: Optional[str] = "short"
     tone: Optional[str] = "neutral"
     bullets: Optional[bool] = True
+
 
 def verify_google_access_token(access_token: str):
     if not access_token:
@@ -43,6 +44,7 @@ def verify_google_access_token(access_token: str):
 
     return info
 
+
 def build_prompt(req: SummarizeRequest):
     meta = []
     if req.subject:
@@ -55,7 +57,7 @@ def build_prompt(req: SummarizeRequest):
 
     instructions = (
         "Summarize the email body below. If bullets are requested, produce a bulleted list. "
-        "Otherwise, write a short paragraph. Also include a 1-line suggested reply."
+        "Otherwise, write a short paragraph. Also include a one-sentence suggested reply."
     )
 
     return "\n".join([
@@ -66,8 +68,10 @@ def build_prompt(req: SummarizeRequest):
         req.body
     ])
 
+
 @app.post("/summarize")
 async def summarize(req: SummarizeRequest, authorization: Optional[str] = Header(None)):
+    # Authentication via Gmail Add-on
     if not authorization or not authorization.lower().startswith("bearer "):
         raise HTTPException(status_code=401, detail="Missing or invalid Authorization header")
 
@@ -76,35 +80,37 @@ async def summarize(req: SummarizeRequest, authorization: Optional[str] = Header
 
     prompt = build_prompt(req)
 
-    headers = {
-        "Authorization": f"Bearer {OPENAI_KEY}",
-        "Content-Type": "application/json",
-    }
+    # Gemini request
+    gemini_url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
+
+    headers = {"Content-Type": "application/json"}
+    params = {"key": GEMINI_API_KEY}
 
     payload = {
-        "model": "gpt-4.1-mini",
-        "messages": [
-            {"role": "system", "content": "You are a concise email summarizer."},
-            {"role": "user", "content": prompt},
+        "contents": [
+            {
+                "parts": [{"text": prompt}]
+            }
         ],
-        "max_tokens": 400,
-        "temperature": 0.2,
+        "generationConfig": {
+            "temperature": 0.2,
+            "maxOutputTokens": 400
+        }
     }
 
-    r = requests.post(
-        "https://api.openai.com/v1/chat/completions",
-        json=payload,
-        headers=headers,
-        timeout=30
-    )
+    r = requests.post(gemini_url, headers=headers, params=params, json=payload, timeout=30)
 
     if r.status_code == 429:
-        raise HTTPException(status_code=503, detail="OpenAI rate limit exceeded. Try again.")
+        raise HTTPException(status_code=503, detail="Gemini rate limit exceeded. Try again.")
 
     if r.status_code != 200:
-        raise HTTPException(status_code=502, detail=f"OpenAI error: {r.text}")
+        raise HTTPException(status_code=502, detail=f"Gemini API error: {r.text}")
 
     data = r.json()
-    assistant_msg = data["choices"][0]["message"]["content"]
 
-    return {"summary": assistant_msg}
+    try:
+        summary = data["candidates"][0]["content"]["parts"][0]["text"]
+    except Exception:
+        summary = str(data)
+
+    return {"summary": summary}
