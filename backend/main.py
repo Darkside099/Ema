@@ -82,7 +82,7 @@ async def summarize(req: SummarizeRequest, authorization: Optional[str] = Header
     }
 
     payload = {
-        "model": "gpt-4o-mini",
+        "model": "gpt-4.1-mini",
         "messages": [
             {"role": "system", "content": "You are a concise email summarizer."},
             {"role": "user", "content": prompt},
