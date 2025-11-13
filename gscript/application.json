@@ -5,25 +5,24 @@
   "oauthScopes": [
     "https://www.googleapis.com/auth/gmail.readonly",
     "https://www.googleapis.com/auth/gmail.addons.current.message.readonly",
-    "https://www.googleapis.com/auth/gmail.addons.current.message.action",
     "https://www.googleapis.com/auth/gmail.addons.current.message.metadata",
+    "https://www.googleapis.com/auth/gmail.addons.current.message.action",
     "https://www.googleapis.com/auth/script.external_request",
-    "https://www.googleapis.com/auth/gmail.compose",
     "https://www.googleapis.com/auth/userinfo.email",
     "https://www.googleapis.com/auth/gmail.addons.execute"
   ],
   "addOns": {
     "common": {
-      "name": "AI Email Summarizer",
-      "logoUrl": "https://www.gstatic.com/images/icons/material/system/1x/summarize_black_24dp.png",
+      "name": "Ema",
+      "logoUrl": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQxkHkSnVxU5257sQhNzwYqYysYM7By5dI8xRZ0fRwhGRZnY6rV0EmKKDu7ob8e04EPdsc&usqp=CAU",
       "layoutProperties": {
-        "primaryColor": "#1a73e8",
+        "primaryColor": "#ff4141",
         "secondaryColor": "#ffffff"
       }
     },
     "gmail": {
-      "name": "AI Email Summarizer",
-      "logoUrl": "https://www.gstatic.com/images/icons/material/system/1x/summarize_black_24dp.png",
+      "name": "Ema",
+      "logoUrl": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQxkHkSnVxU5257sQhNzwYqYysYM7By5dI8xRZ0fRwhGRZnY6rV0EmKKDu7ob8e04EPdsc&usqp=CAU",
       "homepageTrigger": {
         "runFunction": "onHomepageOpen"
       },
@@ -33,11 +32,20 @@
           "onTriggerFunction": "getContextualAddOn"
         }
       ],
-      "primaryColor": "#1a73e8",
+      "primaryColor": "#ff4141",
       "secondaryColor": "#ffffff",
       "openLinkUrlPrefixes": [
         "https://"
       ]
     }
+  },
+  "dependencies": {
+    "enabledAdvancedServices": [
+      {
+        "userSymbol": "Gmail",
+        "version": "v1",
+        "serviceId": "gmail"
+      }
+    ]
   }
 }
