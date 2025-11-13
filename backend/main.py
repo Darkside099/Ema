@@ -10,9 +10,9 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 FLASK_SECRET_KEY = os.getenv("FLASK_SECRET_KEY")
 
 if not GEMINI_API_KEY or not FLASK_SECRET_KEY:
-    raise RuntimeError("Missing GEMINI_API_KEY or FLASK_SECRET_KEY in environment")
+    raise RuntimeError("Missing environment variables")
 
-app = FastAPI(title="Gmail Add-on Summarizer (Gemini version)")
+app = FastAPI(title="Gmail Add-on Summarizer (Gemini 2.x)")
 
 class SummarizeRequest(BaseModel):
     subject: Optional[str] = None
@@ -56,8 +56,8 @@ def build_prompt(req: SummarizeRequest):
     meta.append(f"Bulleted: {req.bullets}")
 
     instructions = (
-        "Summarize the email body below. If bullets are requested, produce a bulleted list. "
-        "Otherwise, write a short paragraph. Also include a one-sentence suggested reply."
+        "Summarize the email body. If bullets are requested, use bullet points. "
+        "Otherwise, write a short paragraph. Also include a 1-line suggested reply."
     )
 
     return "\n".join([
@@ -71,26 +71,21 @@ def build_prompt(req: SummarizeRequest):
 
 @app.post("/summarize")
 async def summarize(req: SummarizeRequest, authorization: Optional[str] = Header(None)):
-    # Authentication via Gmail Add-on
     if not authorization or not authorization.lower().startswith("bearer "):
-        raise HTTPException(status_code=401, detail="Missing or invalid Authorization header")
+        raise HTTPException(status_code=401, detail="Missing Authorization header")
 
     token = authorization.split(" ", 1)[1].strip()
     verify_google_access_token(token)
 
     prompt = build_prompt(req)
 
-    gemini_url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent"
-    
+    gemini_url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
+
     headers = {"Content-Type": "application/json"}
     params = {"key": GEMINI_API_KEY}
 
     payload = {
-        "contents": [
-            {
-                "parts": [{"text": prompt}]
-            }
-        ],
+        "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {
             "temperature": 0.2,
             "maxOutputTokens": 400
@@ -99,17 +94,10 @@ async def summarize(req: SummarizeRequest, authorization: Optional[str] = Header
 
     r = requests.post(gemini_url, headers=headers, params=params, json=payload, timeout=30)
 
-    if r.status_code == 429:
-        raise HTTPException(status_code=503, detail="Gemini rate limit exceeded. Try again.")
-
     if r.status_code != 200:
         raise HTTPException(status_code=502, detail=f"Gemini API error: {r.text}")
 
     data = r.json()
-
-    try:
-        summary = data["candidates"][0]["content"]["parts"][0]["text"]
-    except Exception:
-        summary = str(data)
+    summary = data["candidates"][0]["content"]["parts"][0]["text"]
 
     return {"summary": summary}
