@@ -80,8 +80,8 @@ async def summarize(req: SummarizeRequest, authorization: Optional[str] = Header
 
     prompt = build_prompt(req)
 
-    gemini_url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent"
-
+    gemini_url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent"
+    
     headers = {"Content-Type": "application/json"}
     params = {"key": GEMINI_API_KEY}
 
